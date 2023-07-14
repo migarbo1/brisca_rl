@@ -10,21 +10,27 @@ last digits will be the value of the card (explained in the readme)
 card_value = {0: 11, 1:0, 2:10, 3:0, 4:0, 5:0, 6:0, 7:2, 8:3, 9:4}
 
 class Suits(IntEnum):
-    COINS: 1
-    SWORDS: 2
-    CUPS: 3
-    STICKS: 4
+    COINS: 0
+    SWORDS: 1
+    CUPS: 2
+    STICKS: 3
 
+
+class State():
+    def __init__(self, hand: list, ruling_suit: int, played_card: int = None):
+        self.hand = hand
+        self.ruling_suit = ruling_suit
+        self.played_card = played_card
 
 class BriscaEnv():
     def initialize_deck(self):
-        self.deck = [i * 100 + card_value[i%10] for i in range(10,50)]
+        self.deck = [i for i in range(0,40)]
         random.shuffle(self.deck)
 
 
     def __init__(self):
         self.initialize_deck()
-        self.ruling_card = self.deck.pop(0)
+        self.ruling_card = self.deck[-1]
         self.ruling_suit = self.get_card_suit(self.ruling_card)
         self.points = {'player': 0, 'rival': 0}
         self.cards_in_play = []
@@ -34,13 +40,10 @@ class BriscaEnv():
         return [self.deck.pop(0) for i in range(3)]
     
 
-    def draw(self, hand, action = -1):
+    def draw(self, hand):
         drawed_card = self.deck.pop(0) if len(self.deck) else None
         if drawed_card != None:
-            if action != -1:
-                hand[action] = drawed_card
-            else:
-                hand.append(drawed_card)
+            hand.append(drawed_card)
         return hand
     
 
@@ -49,32 +52,34 @@ class BriscaEnv():
     
 
     def change_ruling_card(self, hand: list):
-        for i, card in enumerate(hand):
-            if card != -1:
+        if len(hand) > 0 and len(self.deck) > 0:
+            changing_card = 6 if self.get_card_number(self.ruling_card) > 6 else 1
+            for i, card in enumerate(hand):
                 card_suit = self.get_card_suit(card)
-                if card_suit == self.ruling_suit:
+                if card_suit == self.ruling_suit and self.get_card_number(card) == changing_card:
                     self.ruling_card, hand[i] = hand[i], self.ruling_card
+                    self.deck[-1] = self.ruling_card
+                    break
         return hand
     
 
-    def get_card_suit(c):
-        return int(str(c)[0])
+    def get_card_suit(self, c):
+        return c//10
     
 
-    def get_card_number(c):
-        return int(str(c)[1])
+    def get_card_number(self, c):
+        return c%10
     
 
-    def get_card_value(c):
-        return int(str(c)[2:])
+    def get_card_value(self, c):
+        return card_value[self.get_card_number(c)]
 
 
-    def get_round_winner(self):
+    def get_round_winner(self, c1, c2):
         '''
         returns true if c1 wins, false otherwise.
         Retuns punctuation of winner
         '''
-        c1, c2 = self.cards_in_play
         
         c1_suit = self.get_card_suit(c1)
         c2_suit = self.get_card_suit(c2)
@@ -92,28 +97,29 @@ class BriscaEnv():
             else:
                 return c1_value > c2_value, c1_value + c2_value
         else:
-            c1_round_value = c1_value * 100 if c1_suit == self.ruling_suit else c1_value * 10
-            c2_round_value = c2_value * 100 if c2_suit == self.ruling_suit else c2_value
+            c1_round_value = c1_value + 100 if c1_suit == self.ruling_suit else c1_value + 50
+            c2_round_value = c2_value + 100 if c2_suit == self.ruling_suit else c2_value
             
             return c1_round_value > c2_round_value, c1_value + c2_value
 
+
     def is_game_finished(self, p1_hand: list, p2_hand: list):
-        return len(self.deck) == 0 and sum(p1_hand[i] == p2_hand[i] == -1 for i in range(3)) == 3
+        return len(self.deck) == 0 and len(p1_hand) == len(p2_hand) == 0
 
 
 
 class RandomOponentBriscaEnv(BriscaEnv):
     def __init__(self):
-        super.__init__()
+        super().__init__()
         self.oponent_hand = self.get_starting_hand()
 
-    def step(self, state: list, action: int):
-        player_hand = state[0:3]
-        card_to_play, player_hand[action] = player_hand[action], -1
+    def step(self, state: State, action: int):
+        player_hand = state.hand
+        card_to_play =  player_hand.pop(action)
 
         self.play(card_to_play)
 
-        if state[-1] == -1: #player hits first
+        if state.played_card == None: #player hits first
             oponent_card_to_play = self.oponent_hand.pop(random.randint(0,len(self.oponent_hand)-1))
         else:
             oponent_card_to_play = self.cards_in_play[0]
@@ -124,21 +130,24 @@ class RandomOponentBriscaEnv(BriscaEnv):
         self.oponent_hand = self.change_ruling_card(self.oponent_hand)
 
         if player_wins:
-            player_hand = self.draw(player_hand, action)
+            player_hand = self.draw(player_hand)
             self.oponent_hand = self.draw(self.oponent_hand)
-            state[-1] = -1
+            state.played_card = None
             self.points['player'] += points
         else:
             self.oponent_hand = self.draw(self.oponent_hand)
-            player_hand = self.draw(player_hand, action)
-            oponent_next_card_to_play = self.oponent_hand.pop(random.randint(0,len(self.oponent_hand)-1))
-            state[-1] = oponent_next_card_to_play
+            player_hand = self.draw(player_hand)
             self.points['rival'] += points
+            if not self.is_game_finished(player_hand, self.oponent_hand):
+                oponent_next_card_to_play = self.oponent_hand.pop(random.randint(0,len(self.oponent_hand)-1))
+                state.played_card = oponent_next_card_to_play
+                self.play(oponent_next_card_to_play)
         
-        state[0:3] = player_hand
+        state.hand = player_hand
 
         if self.is_game_finished(player_hand, self.oponent_hand):
-            reward = (self.points['player'] - self.points['rival']) / abs(self.points['player'] - self.points['rival'])
+            #reward = (self.points['player'] - self.points['rival']) / abs(self.points['player'] - self.points['rival'])
+            reward = self.points['player'] - self.points['rival']
         else:
             reward = 0
 
