@@ -22,6 +22,9 @@ class State():
         self.ruling_suit = ruling_suit
         self.played_card = played_card
 
+    def __str__(self) -> str:
+        return 'hand: {}, ruling_suit: {}, played_card: {}'.format(self.hand, self.ruling_suit, self.played_card)
+
 class BriscaEnv():
     def initialize_deck(self):
         self.deck = [i for i in range(0,40)]

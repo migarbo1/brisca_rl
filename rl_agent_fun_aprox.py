@@ -31,7 +31,7 @@ def select_action(state: env.State):
     if eps/num_actions + 1-eps > random.random():
         action = get_argmax_q_value(state)
     else:
-        action = random.randint(0, len(state.hand))
+        action = random.randint(0, len(state.hand)-1)
     return action
 
 def get_argmax_q_value(state: env.State):
@@ -59,30 +59,23 @@ def SARSA_control(num_episodes, lam):
             environment.cards_in_play[0] if len(environment.cards_in_play) > 0 else None
         )
 
-        print('episode: ',i)
         #choose action for selected S
         act = select_action(st)
-        print('selected action', act)
 
         while not environment.is_game_finished(st.hand, environment.oponent_hand):
             #take action and observe Reward and New state
             st_, reward = environment.step(st, act)
-            print('new state', st_)
             
             #choose new action from derived new state
             if not environment.is_game_finished(st_.hand, environment.oponent_hand):
-                print('game not finished')
                 act_ = select_action(st_)
-                print('new action selected', act_)
                 delta = (1 - lam) * get_q_hat(st_, act_) - get_q_hat(st, act)
                 theta += get_alpha() * (reward + delta) * get_feature_vector(st, act)
                 act = act_
-                print('parameters updated')
             else:
                 print('game finished')
                 theta += get_alpha() * (reward - get_q_hat(st, act)) * get_feature_vector(st, act)
                 act = None
-                print('parameters updated')
             st = st_
 
         i += 1
