@@ -47,10 +47,10 @@ class FunctApproxMethodology():
                 argmax = action
         return argmax
     
-    def save_weights(self, filename = 'weights/same_policy_weights.npy'):
-        with open(filename, 'wb') as file:
+    def save_weights(self, mode = 'Same_Policy'):
+        with open('weights/{}_weights.npy'.format(mode), 'wb') as file:
             np.save(file, self.theta)
 
     def load_weights(self, filename):
-        with open(filename, 'wb') as file:
+        with open(filename, 'rb') as file:
             return np.load(file)
