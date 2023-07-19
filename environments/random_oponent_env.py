@@ -10,22 +10,24 @@ class RandomOponentBriscaEnv(BriscaEnv):
         card_to_play =  player_hand.pop(action)
 
         self.play(card_to_play)
-
-        if state.played_card == None: #player hits first
+        
+        agent_hits_first = False    
+        if state.played_card == None: #rl_agent hits first
             oponent_card_to_play = self.get_oponent_card(fun_approx)
+            agent_hits_first = True
         else:
             oponent_card_to_play = self.cards_in_play[0]
 
-        player_wins, points = self.get_round_winner(card_to_play, oponent_card_to_play)
+        first_card_wins, points = self.get_round_winner(card_to_play, oponent_card_to_play)
 
         player_hand = self.change_ruling_card(player_hand)
         self.oponent_hand = self.change_ruling_card(self.oponent_hand)
 
-        if player_wins:
+        if self.rl_agent_wins(first_card_wins, agent_hits_first):
             player_hand = self.draw(player_hand)
             self.oponent_hand = self.draw(self.oponent_hand)
             state.played_card = None
-            self.points['player'] += points
+            self.points['rl_agent'] += points
         else:
             self.oponent_hand = self.draw(self.oponent_hand)
             player_hand = self.draw(player_hand)
@@ -38,7 +40,7 @@ class RandomOponentBriscaEnv(BriscaEnv):
         state.hand = player_hand
 
         if self.is_game_finished(player_hand, self.oponent_hand):
-            reward = self.points['player'] - self.points['rival']
+            reward = self.points['rl_agent'] - self.points['rival']
         else:
             reward = 0
 

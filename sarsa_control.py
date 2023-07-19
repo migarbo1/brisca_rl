@@ -6,6 +6,7 @@ from environments.brisca_env import State
 import matplotlib.pyplot as plt
 import numpy as np
 import click
+from tqdm import tqdm
 
 
 @click.command()
@@ -13,13 +14,12 @@ import click
 @click.option('--l', default=1, help='lambda value for the sarsa control: 0 = sarsa, 1 = monte-carlo')
 @click.option('--mode', default='Same_Policy', help='mode for oponent in environment: Same_Policy, Random or Fix_Beh')
 def SARSA_control(e, l, mode):
-    theta = np.zeros((82,))
     i = 0
     wins = 0
     points = []
 
     fun_approx_meth = FunctApproxMethodology()
-    while i < e:
+    while tqdm(i < e):
         environment = get_environment(mode)
         rl_agent_hand = environment.get_starting_hand()
 
@@ -41,17 +41,17 @@ def SARSA_control(e, l, mode):
             if not environment.is_game_finished(st_.hand, environment.oponent_hand):
                 act_ = fun_approx_meth.select_action(st_)
                 delta = (1 - l) * fun_approx_meth.get_q_hat(st_, act_) - fun_approx_meth.get_q_hat(st, act)
-                theta += fun_approx_meth.get_alpha() * (reward + delta) * fun_approx_meth.get_feature_vector(st, act)
+                fun_approx_meth.theta += fun_approx_meth.get_alpha() * (reward + delta) * fun_approx_meth.get_feature_vector(st, act)
                 act = act_
             else:
-                theta += fun_approx_meth.get_alpha() * (reward - fun_approx_meth.get_q_hat(st, act)) * fun_approx_meth.get_feature_vector(st, act)
+                fun_approx_meth.theta += fun_approx_meth.get_alpha() * (reward - fun_approx_meth.get_q_hat(st, act)) * fun_approx_meth.get_feature_vector(st, act)
                 act = None
             st = st_
 
         i += 1
-        points.append([environment.points['player'], environment.points['rival']])
-        wins += environment.points['player'] > environment.points['rival']
-    fun_approx_meth.save_weights()
+        points.append([environment.points['rl_agent'], environment.points['rival']])
+        wins += environment.points['rl_agent'] > environment.points['rival']
+    fun_approx_meth.save_weights(mode)
     plot_points(points, mode)
     print(wins)
 
@@ -68,10 +68,21 @@ def get_environment(mode):
 def plot_points(points, mode):
     x = np.array(points[len(points)-200:])
     plt.title('Last 200 games point distribution for {} oponent'.format(mode))
-    plt.plot(x[:,0], label="player points")
+    plt.plot(x[:,0], label="rl_agent points")
     plt.plot(x[:,1], label="rival points")
     plt.legend()
-    plt.savefig('images/lin_fun_approx_{}_500k_point.png'.format(mode))
+    plt.savefig('images/last_200_games_{}_500k_eps.png'.format(mode))
+
+    plt.close()
+    plt.cla()
+    plt.clf()
+
+    x = np.array(points[:200])
+    plt.title('First 200 games point distribution for {} oponent'.format(mode))
+    plt.plot(x[:,0], label="rl_agent points")
+    plt.plot(x[:,1], label="rival points")
+    plt.legend()
+    plt.savefig('images/first_200_games_{}_500k_eps.png'.format(mode))
 
 if __name__ == '__main__':
     SARSA_control()

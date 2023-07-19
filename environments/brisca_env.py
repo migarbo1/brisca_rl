@@ -4,10 +4,10 @@ import random
 card_value = {0: 11, 1:0, 2:10, 3:0, 4:0, 5:0, 6:0, 7:2, 8:3, 9:4}
 
 class Suits(IntEnum):
-    COINS: 0
-    SWORDS: 1
-    CUPS: 2
-    STICKS: 3
+    COINS = 0
+    SWORDS = 1
+    CUPS = 2
+    STICKS = 3
 
 
 class State():
@@ -29,7 +29,7 @@ class BriscaEnv():
         self.initialize_deck()
         self.ruling_card = self.deck[-1]
         self.ruling_suit = self.get_card_suit(self.ruling_card)
-        self.points = {'player': 0, 'rival': 0}
+        self.points = {'rl_agent': 0, 'rival': 0}
         self.cards_in_play = []
 
 
@@ -102,3 +102,11 @@ class BriscaEnv():
 
     def is_game_finished(self, p1_hand: list, p2_hand: list):
         return len(self.deck) == 0 and len(p1_hand) == len(p2_hand) == 0
+    
+    def rl_agent_wins(self, c1_wins, agent_hits_first):
+        if c1_wins and agent_hits_first:
+            return True
+        if not c1_wins and not agent_hits_first:
+            return True
+        
+        return False
